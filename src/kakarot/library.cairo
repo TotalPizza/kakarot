@@ -8,6 +8,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin, BitwiseBuiltin
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.math import split_felt
 from starkware.cairo.common.memcpy import memcpy
+from starkware.cairo.common.cairo_keccak import keccak_felts, finalize_keccak
 from starkware.starknet.common.syscalls import deploy
 from starkware.starknet.common.syscalls import get_contract_address
 // OpenZeppelin dependencies
@@ -95,6 +96,7 @@ namespace Kakarot {
         // Generate instructions set
         let instructions: felt* = EVMInstructions.generate_instructions();
 
+        // ToDo: add caller address to ctx
         // Prepare execution context
         let ctx: model.ExecutionContext* = ExecutionContext.init_at_address(
             address=address, calldata=calldata, calldata_len=calldata_len, value=value
@@ -174,11 +176,12 @@ namespace Kakarot {
     //      will be mapped to an evm address
     // @param bytes_len: the contract bytecode lenght
     // @param bytes: the contract bytecode
+    // @param caller_address: the evm address of the calling account contract
     // @return evm_contract_address The evm address that is mapped to the newly deployed starknet contract address
     // @return starknet_contract_address The newly deployed starknet contract address
     @external
     func deploy_contract{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-        bytes_len: felt, bytes: felt*
+        bytes_len: felt, bytes: felt*, caller_address: felt
     ) -> (evm_contract_address: felt, starknet_contract_address: felt) {
         alloc_locals;
         let (current_salt) = salt.read();
@@ -200,15 +203,39 @@ namespace Kakarot {
             constructor_calldata=calldata,
             deploy_from_zero=FALSE,
         );
-        // Increment salt
+        // Increment salt (to ensure future unique starknet contract deployment)
         salt.write(value=current_salt + 1);
-        // Generate EVM_contract address from the new cairo contract
-        // TODO: TEMPORARY SOLUTION FOR HACK-LISBON !!!
-        let (_, low) = split_felt(contract_address);
-        local mock_evm_address = 0xAbdE100700000000000000000000000000000000 + low;
+
+        local evm_contract_address;
+        %{
+            import rlp
+            from eth_utils import big_endian_to_int
+            from eth_hash.auto import keccak
+
+            value = keccak(rlp.encode([ids.caller_address, 0]))
+
+            trimmed_value = value[-20:]
+            padded_value = trimmed_value.rjust(20, b'\x00')
+            
+            ids.evm_contract_address = big_endian_to_int(padded_value))
+        %}
+
+        //Determine evm address using keccak
+        //let (keccak_ptr: felt*) = alloc();
+        //let (elements: felt*) = alloc();
+        //local keccak_ptr_start: felt* = keccak_ptr;
+        //assert elements[0] = caller_address;
+        //assert elements[1] = 1; //Nonce
+
+        //with keccak_ptr {
+        //    let (evm_contract_address: Uint256) = keccak_felts(n_elements=2, elements=elements);
+        //}
+        // Finalize to ensoure prover cannot manipulate result
+        //finalize_keccak(keccak_ptr_start=keccak_ptr_start, keccak_ptr_end=keccak_ptr);
+
         // Save address of new contracts
         let (reg_address) = registry_address.read();
-        IRegistry.set_account_entry(reg_address, contract_address, mock_evm_address);
-        return (evm_contract_address=mock_evm_address, starknet_contract_address=contract_address);
+        IRegistry.set_account_entry(reg_address, contract_address, evm_contract_address);
+        return (evm_contract_address=evm_contract_address, starknet_contract_address=contract_address);
     }
 }

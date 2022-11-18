@@ -35,3 +35,9 @@ namespace IEvmContract {
     func is_initialized() -> (is_initialized: felt) {
     }
 }
+
+@contract_interface
+namespace IEvmAccount {
+    func getEthAddress() -> (ethAddress: felt) {
+    }
+}

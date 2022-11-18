@@ -6,12 +6,13 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin, BitwiseBuiltin
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
+from starkware.starknet.common.syscalls import get_caller_address
 
 // Local dependencies
 from kakarot.library import Kakarot, evm_contract_deployed
 from kakarot.model import model
 from kakarot.stack import Stack
-from kakarot.interfaces.interfaces import IEvmContract
+from kakarot.interfaces.interfaces import IEvmContract, IEvmAccount
 
 // Constructor
 @constructor
@@ -68,7 +69,7 @@ func execute{
 @external
 func execute_at_address{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(address: felt, value: felt, calldata_len: felt, calldata: felt*) -> (
+}(contract_address: felt, value: felt, calldata_len: felt, calldata: felt*) -> (
     stack_len: felt,
     stack: Uint256*,
     memory_len: felt,
@@ -80,14 +81,18 @@ func execute_at_address{
 ) {
     alloc_locals;
 
+    //Fetch caller accounts evm address
+    let (starknet_account_address) = get_caller_address();
+    let (evm_address) = IEvmAccount.getEthAddress(starknet_account_address);
+
     // Check is _to address is 0x0000..00:
-    if (address == 0) {
+    if (contract_address == 0) {
         let (stack: Uint256*) = alloc();
         let (zero_array: felt*) = alloc();
-        // Deploy contract
 
+        // Deploy contract
         let (evm_contract_address: felt, starknet_contract_address: felt) = deploy(
-            bytes_len=calldata_len, bytes=calldata
+            bytes_len=calldata_len, bytes=calldata, caller_address=evm_address
         );
         return (
             stack_len=0,
@@ -101,8 +106,10 @@ func execute_at_address{
         );
     }
 
+    //TODO: Add EVM address to params
+    // Deploy contract
     let context = Kakarot.execute_at_address(
-        address=address, calldata_len=calldata_len, calldata=calldata, value=value
+        address=contract_address, calldata_len=calldata_len, calldata=calldata, value=value
     );
 
     let len = Stack.len(context.stack);
@@ -153,15 +160,16 @@ func set_native_token{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
 //      will be mapped to an evm address
 // @param bytes_len: the contract bytecode lenght
 // @param bytes: the contract bytecode
+// @param caller_address: the evm address of the calling account contract
 // @return evm_contract_address The evm address that is mapped to the newly deployed starknet contract address
 // @return starknet_contract_address The newly deployed starknet contract address
 @external
 func deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    bytes_len: felt, bytes: felt*
+    bytes_len: felt, bytes: felt*, caller_address: felt
 ) -> (evm_contract_address: felt, starknet_contract_address: felt) {
     // Deploy a new contract account
     let (evm_contract_address, starknet_contract_address) = Kakarot.deploy_contract(
-        bytes_len, bytes
+        bytes_len, bytes, caller_address
     );
     // Log new contract account deployment
     evm_contract_deployed.emit(
