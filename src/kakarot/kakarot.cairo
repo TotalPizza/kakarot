@@ -6,12 +6,13 @@
 from starkware.cairo.common.cairo_builtins import HashBuiltin, BitwiseBuiltin
 from starkware.cairo.common.uint256 import Uint256
 from starkware.cairo.common.alloc import alloc
+from starkware.starknet.common.syscalls import get_caller_address
 
 // Local dependencies
 from kakarot.library import Kakarot
 from kakarot.model import model
 from kakarot.stack import Stack
-from kakarot.interfaces.interfaces import IEvmContract
+from kakarot.interfaces.interfaces import IEvmContract, IEvmAccount
 
 // Constructor
 @constructor
@@ -68,7 +69,7 @@ func execute{
 @external
 func execute_at_address{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
-}(address: felt, value: felt, calldata_len: felt, calldata: felt*) -> (
+}(contract_address: felt, value: felt, calldata_len: felt, calldata: felt*) -> (
     stack_len: felt,
     stack: Uint256*,
     memory_len: felt,
@@ -78,8 +79,37 @@ func execute_at_address{
     return_data_len: felt,
     return_data: felt*,
 ) {
+    alloc_locals;
+
+    //Fetch caller accounts evm address
+    let (starknet_account_address) = get_caller_address();
+    let (evm_address) = IEvmAccount.getEthAddress(starknet_account_address);
+
+    // Check is _to address is 0x0000..00:
+    if (contract_address == 0) {
+        let (stack: Uint256*) = alloc();
+        let (zero_array: felt*) = alloc();
+
+        // Deploy contract
+        let (evm_contract_address: felt, starknet_contract_address: felt) = deploy(
+            bytes_len=calldata_len, bytes=calldata, caller_address=evm_address
+        );
+        return (
+            stack_len=0,
+            stack=stack,
+            memory_len=0,
+            memory=zero_array,
+            evm_contract_address=evm_contract_address,
+            starknet_contract_address=starknet_contract_address,
+            return_data_len=0,
+            return_data=zero_array,
+        );
+    }
+
+    //TODO: Add EVM address to params
+    // Deploy contract
     let context = Kakarot.execute_at_address(
-        address=address, calldata_len=calldata_len, calldata=calldata, value=value
+        address=contract_address, calldata_len=calldata_len, calldata=calldata, value=value
     );
 
     let len = Stack.len(context.stack);
@@ -125,13 +155,36 @@ func set_native_token{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_chec
     return Kakarot.set_native_token(native_token_address_);
 }
 
-// @notice Deploy a new contract account and execute constructor
-// @param bytes_len: the constructor + contract bytecode lenght
-// @param bytes: the constructor + contract bytecode
+// @notice deploy contract account
+// @dev Deploys a new starknet contract which functions as a new contract account and
+//      will be mapped to an evm address
+// @param bytes_len: the contract bytecode lenght
+// @param bytes: the contract bytecode
+// @param caller_address: the evm address of the calling account contract
 // @return evm_contract_address The evm address that is mapped to the newly deployed starknet contract address
 // @return starknet_contract_address The newly deployed starknet contract address
 @external
-func deploy{
+func deploy{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    bytes_len: felt, bytes: felt*, caller_address: felt
+) -> (evm_contract_address: felt, starknet_contract_address: felt) {
+    // Deploy a new contract account
+    let (evm_contract_address, starknet_contract_address) = Kakarot.deploy_contract(
+        bytes_len, bytes, caller_address
+    );
+    // Log new contract account deployment
+    evm_contract_deployed.emit(
+        evm_contract_address=evm_contract_address,
+        starknet_contract_address=starknet_contract_address,
+    );
+    return (evm_contract_address, starknet_contract_address);
+}
+
+// @notice deploy starknet contract
+// @dev starknet contract will be mapped to an evm address that is also generated within this function
+// @param bytes: the contract bytecode
+// @return evm address that is mapped to the actual contract address
+@external
+func initiate{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr, bitwise_ptr: BitwiseBuiltin*
 }(bytecode_len: felt, bytecode: felt*) -> (
     evm_contract_address: felt, starknet_contract_address: felt

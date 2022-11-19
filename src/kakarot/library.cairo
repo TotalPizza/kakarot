@@ -8,7 +8,8 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin, BitwiseBuiltin
 from starkware.cairo.common.bool import TRUE, FALSE
 from starkware.cairo.common.math import split_felt
 from starkware.cairo.common.memcpy import memcpy
-from starkware.starknet.common.syscalls import deploy as deploy_syscall
+from starkware.cairo.common.cairo_keccak import keccak_felts, finalize_keccak
+from starkware.starknet.common.syscalls import deploy
 from starkware.starknet.common.syscalls import get_contract_address
 // OpenZeppelin dependencies
 from openzeppelin.access.ownable.library import Ownable
@@ -95,6 +96,7 @@ namespace Kakarot {
         // Generate instructions set
         let instructions: felt* = EVMInstructions.generate_instructions();
 
+        // ToDo: add caller address to ctx
         // Prepare execution context
         let ctx: model.ExecutionContext* = ExecutionContext.init_at_address(
             address=address, calldata=calldata, calldata_len=calldata_len, value=value
