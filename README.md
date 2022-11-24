@@ -199,8 +199,16 @@ make run-test-mark-log mark=<MARK> # with log
 ## Deploy
 
 ```bash
-# On testnet
-./scripts/deploy_kakarot.sh -p testnet -a admin
+make deploy-protocol PRIVATE_KEY=<YOUR_PRIVATE_KEY> ACCOUNT_ADDRESS=<YOUR_ACCOUNT_ADDRESS> CHAIN=<CHAIN-NAME>
+
+# Chain options:
+# - testnet
+# - testnet2
+# - mainnet
+
+# Example:
+
+make deploy-protocol PRIVATE_KEY=2384627602342976342740745368193472 ACCOUNT_ADDRESS=0x042271BFb29116007603A7F19C3afB0a9587CBE712B2c8991E05cc314109Dec5 CHAIN=testnet
 ```
 
 With:
