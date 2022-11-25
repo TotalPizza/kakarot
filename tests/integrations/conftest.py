@@ -18,21 +18,16 @@ logger = logging.getLogger()
 @pytest_asyncio.fixture(scope="module")
 async def kakarot(
     starknet: Starknet, eth: StarknetContract, contract_account_class: DeclaredClass, kakarot_class: DeclaredClass
-) -> StarknetContract:
-    logger.info(
-            "DEPLOYING PROXY"
-        )
+) -> StarknetContract: 
     return await starknet.deploy(
         source="./tests/utils/Proxy.cairo",
         constructor_calldata=[
             kakarot_class.class_hash,
-            "1679326747767113184781509514654930448714911516044653930322593061206440237873", # selector = "init"
-            3,
-            [
-                1,
-                eth.contract_address,
-                contract_account_class.class_hash,
-            ]
+            1679326747767113184781509514654930448714911516044653930322593061206440237873, # selector = "init"
+            3, # Calldata Length
+            1, # Owner Address
+            eth.contract_address,
+            contract_account_class.class_hash,
         ],
     )
 
