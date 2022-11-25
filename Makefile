@@ -9,6 +9,7 @@ build:
 	poetry run starknet-compile ./src/kakarot/accounts/eoa/externally_owned_account.cairo --output build/externally_owned_account.json --cairo_path ./src --abi build/externally_owned_account_abi.json
 	poetry run starknet-compile ./src/kakarot/accounts/registry/account_registry.cairo --output build/account_registry.json --cairo_path ./src --abi build/account_registry_abi.json
 	poetry run starknet-compile ./tests/utils/Proxy.cairo --output build/kakarot_proxy.json --cairo_path ./src --abi build/kakarot_proxy_abi.json
+	poetry run starknet-compile ./tests/utils/ERC20.cairo --output build/erc20.json --cairo_path ./src --abi build/erc20_abi.json
 
 build-mac:
 	$(MAKE) clean
@@ -17,6 +18,7 @@ build-mac:
 	starknet-compile ./src/kakarot/accounts/eoa/externally_owned_account.cairo --output build/externally_owned_account.json --cairo_path ./src --abi build/externally_owned_account_abi.json
 	starknet-compile ./src/kakarot/accounts/registry/account_registry.cairo --output build/account_registry.json --cairo_path ./src --abi build/account_registry_abi.json
 	starknet-compile ./tests/utils/Proxy.cairo --output build/kakarot_proxy.json --cairo_path ./src --abi build/kakarot_proxy_abi.json
+	starknet-compile ./tests/utils/ERC20.cairo --output build/erc20.json --cairo_path ./src --abi build/erc20_abi.json
 
 setup:
 	poetry install --no-root

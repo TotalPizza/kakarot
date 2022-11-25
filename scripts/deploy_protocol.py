@@ -15,6 +15,16 @@ account_address = int(sys.argv[2],16)
 public_key = private_to_stark_key(private_key)
 signer_key_pair = KeyPair(private_key,public_key)
 client = AccountClient(address=account_address, client=GatewayClient(net="testnet"), key_pair=signer_key_pair, chain=StarknetChainId.TESTNET, supported_tx_version=1)
+kakarot_abi = [
+    {
+        "inputs": [
+            {"name": "registry_address_", "type": "felt"},
+        ],
+        "name": "set_account_registry",
+        "outputs": [],
+        "type": "function",
+    }
+]
 
 async def deployKakarot():
 
@@ -31,6 +41,17 @@ async def deployKakarot():
     #                               #
     #################################
     
+    # Deploy ERC20
+    print("Deploying ERC20")
+    contract_address = await deployContract(client=client,compiled_contract=Path("./build/", "erc20.json").read_text("utf-8"),calldata=[
+        "Kakarot_ETH", 
+        "kETH", 
+        18, 
+        {"low":100000000000000,"high":0}, 
+        account_address
+    ])
+    print("ETH ERC20 Address: ",contract_address)
+
     # Declare EVM Contract
     print("⏳ Declaring EVM Contract Account... ")
     declare_transaction = await client.sign_declare_transaction(
@@ -51,17 +72,6 @@ async def deployKakarot():
     kakarot_class_hash = resp.class_hash
     print("Kakarot Class Hash: ", kakarot_class_hash)
 
-    # Deploy ERC20
-    print("Deploying ERC20")
-    contract_address = await deployContract(client=client,compiled_contract=Path("./build/", "erc20.json").read_text("utf-8"),calldata=[
-        "Kakarot_ETH", 
-        "kETH", 
-        18, 
-        [100000000000000,0], 
-        account_address
-    ])
-    print("ETH ERC20 Address: ",contract_address)
-
     # Deploy Kakarot Proxy
     print("Deploying Kakarot Proxy")
     compiled_contract = Path("./build/", "kakarot_proxy.json").read_text("utf-8")
@@ -70,7 +80,7 @@ async def deployKakarot():
         2087021424722619777119509474943472645767659996348769578120564519014510906823, # ETH ERC20 on testnet 1 & 2
         evm_account_class_hash
     ])
-    kakarotProxy = await Contract.from_address(address=int(contract_address,16),client=client)
+    kakarotProxy = Contract(address=contract_address, abi=kakarot_abi, client=client)
     print("Kakarot Proxy Address: ",contract_address)
 
     # Deploy Registry
