@@ -101,6 +101,7 @@ async def contract_account_class(starknet: Starknet):
         disable_hint_validation=False,
     )
 
+
 @pytest_asyncio.fixture(scope="session")
 async def kakarot_class(starknet: Starknet):
     return await starknet.declare(

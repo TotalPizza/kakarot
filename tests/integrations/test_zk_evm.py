@@ -12,7 +12,6 @@ from tests.utils.utils import (
 )
 
 
-
 @pytest.mark.asyncio
 class TestZkEVM:
     @pytest.mark.parametrize(
