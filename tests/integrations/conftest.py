@@ -18,7 +18,7 @@ logger = logging.getLogger()
 @pytest_asyncio.fixture(scope="module")
 async def kakarot(
     starknet: Starknet, eth: StarknetContract, contract_account_class: DeclaredClass, kakarot_class: DeclaredClass
-) -> StarknetContract: 
+) -> StarknetContract:   
     return await starknet.deploy(
         source="./tests/utils/Proxy.cairo",
         constructor_calldata=[

@@ -43,14 +43,14 @@ async def deployKakarot():
     
     # Deploy ERC20
     print("Deploying ERC20")
-    contract_address = await deployContract(client=client,compiled_contract=Path("./build/", "erc20.json").read_text("utf-8"),calldata=[
+    eth_address = await deployContract(client=client,compiled_contract=Path("./build/", "erc20.json").read_text("utf-8"),calldata=[
         "Kakarot_ETH", 
         "kETH", 
         18, 
         {"low":100000000000000,"high":0}, 
         account_address
     ])
-    print("ETH ERC20 Address: ",contract_address)
+    print("ETH ERC20 Address: ",eth_address)
 
     # Declare EVM Contract
     print("⏳ Declaring EVM Contract Account... ")
@@ -60,7 +60,7 @@ async def deployKakarot():
     resp = await client.declare(transaction=declare_transaction)
     await client.wait_for_tx(resp.transaction_hash)
     evm_account_class_hash = resp.class_hash
-    print("Contract Account Class Hash: ", evm_account_class_hash)
+    print("Contract Account Class Hash: ", hex(evm_account_class_hash))
 
     # Declare Kakarot
     print("⏳ Declaring Kakarot Contract...: ")
@@ -70,15 +70,19 @@ async def deployKakarot():
     resp = await client.declare(transaction=declare_transaction)
     await client.wait_for_tx(resp.transaction_hash)
     kakarot_class_hash = resp.class_hash
-    print("Kakarot Class Hash: ", kakarot_class_hash)
+    print("Kakarot Class Hash: ", hex(kakarot_class_hash))
 
     # Deploy Kakarot Proxy
     print("Deploying Kakarot Proxy")
     compiled_contract = Path("./build/", "kakarot_proxy.json").read_text("utf-8")
     contract_address = await deployContract(client=client,compiled_contract=compiled_contract,calldata=[
-        account_address,
+        kakarot_class_hash,        
         2087021424722619777119509474943472645767659996348769578120564519014510906823, # ETH ERC20 on testnet 1 & 2
-        evm_account_class_hash
+        [
+            account_address, # Owner Address
+            int(eth_address,16),
+            evm_account_class_hash
+        ]
     ])
     kakarotProxy = Contract(address=contract_address, abi=kakarot_abi, client=client)
     print("Kakarot Proxy Address: ",contract_address)
@@ -104,7 +108,7 @@ async def deployKakarot():
 
     # Set Account Registry in Kakarot 
     invocation = await kakarotProxy.functions["set_account_registry"].invoke(kakarotProxy.address,max_fee=50000000000000000000)
-    print("Transfering Account Registry Ownership...")
+    print("Set account registry in Kakarot...")
     await invocation.wait_for_acceptance()
 
 asyncio.run(deployKakarot())
