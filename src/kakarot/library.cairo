@@ -68,7 +68,9 @@ namespace Kakarot {
         pedersen_ptr: HashBuiltin*,
         range_check_ptr,
         bitwise_ptr: BitwiseBuiltin*,
-    }(call_context: model.CallContext*) -> model.ExecutionContext* {
+    }(call_context: model.CallContext*) -> ExecutionContext.Summary* {
+        alloc_locals;
+
         // Prepare execution context
         let ctx: model.ExecutionContext* = ExecutionContext.init(call_context);
 
@@ -78,7 +80,11 @@ namespace Kakarot {
         // Start execution
         let ctx = run(ctx=ctx);
 
-        return ctx;
+        // Finalize
+        // TODO: Consider finalizing on `ret` instruction, to get the memory efficiently.
+        let summary = ExecutionContext.finalize(self=ctx);
+
+        return summary;
     }
 
     // @notice execute bytecode of a given EVM contract
@@ -91,7 +97,11 @@ namespace Kakarot {
         pedersen_ptr: HashBuiltin*,
         range_check_ptr,
         bitwise_ptr: BitwiseBuiltin*,
-    }(address: felt, calldata_len: felt, calldata: felt*, value: felt) -> model.ExecutionContext* {
+    }(
+        address: felt, calldata_len: felt, calldata: felt*, value: felt
+    ) -> ExecutionContext.Summary* {
+        alloc_locals;
+
         // Prepare execution context
         let ctx: model.ExecutionContext* = ExecutionContext.init_at_address(
             address=address, calldata_len=calldata_len, calldata=calldata, value=value
@@ -103,7 +113,11 @@ namespace Kakarot {
         // Start execution
         let ctx = run(ctx);
 
-        return ctx;
+        // Finalize
+        // TODO: Consider finalizing on `ret` instruction, to get the memory efficiently.
+        let summary = ExecutionContext.finalize(self=ctx);
+
+        return summary;
     }
 
     // @notice Run the execution of the bytecode.
