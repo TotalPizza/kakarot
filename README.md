@@ -199,8 +199,8 @@ make run-test-mark-log mark=<MARK> # with log
 ## Deploy
 
 ```bash
-# On testnet
-./scripts/deploy_kakarot.sh -p testnet -a admin
+make deploy-protocol PRIVATE_KEY=<YOUR_PRIVATE_KEY> ACCOUNT_ADDRESS=<YOUR_ACCOUNT_ADDRESS>
+#Deploys to goerli-1
 ```
 
 With:

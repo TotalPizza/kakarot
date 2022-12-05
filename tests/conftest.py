@@ -133,3 +133,12 @@ async def set_account_registry(
     await account_registry.transfer_ownership(1).execute(
         caller_address=kakarot.contract_address
     )
+
+
+@pytest_asyncio.fixture(scope="session")
+async def kakarot_class(starknet: Starknet):
+    return await starknet.declare(
+        source="./src/kakarot/kakarot.cairo",
+        cairo_path=["src"],
+        disable_hint_validation=False,
+    )
