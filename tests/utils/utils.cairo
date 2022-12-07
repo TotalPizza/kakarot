@@ -6,7 +6,7 @@
 from starkware.cairo.common.alloc import alloc
 from starkware.cairo.common.cairo_builtins import HashBuiltin, BitwiseBuiltin
 from starkware.cairo.common.bool import TRUE, FALSE
-from starkware.cairo.common.uint256 import Uint256, uint256_eq, assert_uint256_eq
+from starkware.cairo.common.uint256 import Uint256, uint256_check, uint256_add, uint256_eq, assert_uint256_eq
 from starkware.cairo.common.math import split_felt
 
 // Internal dependencies
@@ -76,9 +76,37 @@ namespace TestHelpers {
         return ();
     }
 
+    // @notice Push n element-array starting from a specific value into the stack one at a time
+    // ex: If n = 3 and start = Uint256(0, 0),
+    // resulting stack elements will be [ Uint256(2, 0) ]
+    //                                  [ Uint256(1, 0) ]
+    //                                  [ Uint256(0, 0) ]
+    func push_elements_in_range_to_stack{
+        syscall_ptr: felt*,
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr,
+        bitwise_ptr: BitwiseBuiltin*,
+    }(start: Uint256, n: felt, stack: model.Stack*) -> model.Stack* {
+        alloc_locals;
+        if (n == 0) {
+            return stack;
+        }
+
+        uint256_check(start);
+        let updated_stack: model.Stack* = Stack.push(stack, start);
+        let (local element: Uint256, _) = uint256_add(start, Uint256(1, 0));
+        return push_elements_in_range_to_stack(element, n - 1, updated_stack);
+    }
+
     func assert_stack_last_element_contains_uint256{range_check_ptr}(stack: model.Stack*, value: Uint256) {
         let (stack, result) = Stack.peek(stack, 0);
         assert_uint256_eq(result, value);
+
+        return ();
+    }
+
+    func assert_stack_len_16bytes_equal{range_check_ptr}(stack: model.Stack*, len: felt) {
+        assert stack.len_16bytes / 2 = len;
 
         return ();
     }
@@ -144,7 +172,48 @@ namespace TestHelpers {
         assert execution_context_0.starknet_contract_address = execution_context_1.starknet_contract_address;
         assert execution_context_0.evm_contract_address = execution_context_1.evm_contract_address;
         return assert_execution_context_equal(
-            execution_context_0.parent_context, execution_context_1.parent_context
+            execution_context_0.calling_context, execution_context_1.calling_context
         );
+    }
+
+    func print_array(arr_len: felt, arr: felt*) {
+        %{
+            print(f"{ids.arr_len=}")
+            for i in range(ids.arr_len):
+                print(f"arr[{i}]={memory[ids.arr + i]}")
+        %}
+        return ();
+    }
+
+    func print_call_context(call_context: model.CallContext*) {
+        %{ print("print_call_context") %}
+        %{ print(f"{ids.call_context.value=}") %}
+        %{ print("calldata") %}
+        print_array(call_context.calldata_len, call_context.calldata);
+        %{ print("bytecode") %}
+        print_array(call_context.bytecode_len, call_context.bytecode);
+        return ();
+    }
+
+    func print_execution_context(execution_context: model.ExecutionContext*) {
+        %{ print("print_execution_context") %}
+        print_call_context(execution_context.call_context);
+        %{
+            print(f"{ids.execution_context.program_counter=}")
+            print(f"{ids.execution_context.stopped=}")
+        %}
+        %{ print("return_data") %}
+        print_array(execution_context.return_data_len, execution_context.return_data);
+        // TODO: See note above for stack and memory
+        // stack
+        // memory
+        %{
+            print(f"{ids.execution_context.gas_used=}")
+            print(f"{ids.execution_context.gas_limit=}")
+            print(f"{ids.execution_context.intrinsic_gas_cost=}")
+            print(f"{ids.execution_context.starknet_contract_address=}")
+            print(f"{ids.execution_context.evm_contract_address=}")
+        %}
+        return ();
     }
 }

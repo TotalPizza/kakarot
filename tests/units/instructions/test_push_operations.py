@@ -8,7 +8,7 @@ async def push_operations(starknet: Starknet):
     return await starknet.deploy(
         source="./tests/cairo_files/instructions/test_push_operations.cairo",
         cairo_path=["src"],
-        disable_hint_validation=False,
+        disable_hint_validation=True,
     )
 
 
@@ -58,6 +58,9 @@ class TestPushOperations:
 
     async def test__exec_push15_should_add_15_byte_to_stack(self, push_operations):
         await push_operations.test__exec_push15_should_add_15_byte_to_stack().call()
+
+    async def test__exec_push16_should_add_16_byte_to_stack(self, push_operations):
+        await push_operations.test__exec_push16_should_add_16_byte_to_stack().call()
 
     async def test__exec_push17_should_add_17_byte_to_stack(self, push_operations):
         await push_operations.test__exec_push17_should_add_17_byte_to_stack().call()
